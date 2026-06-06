@@ -51,7 +51,7 @@ fun VocabMatchScreen(
         modifier = modifier.fillMaxSize(),
     ) {
         TopAppBar(
-            title = { Text("بازی تطابق واژگان") },
+            title = { Text("بازی شناسایی حروف") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -339,7 +339,7 @@ private fun GameOverContent(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "بازی تمام شد! 🎉",
+            text = if (state.isUnlocked) "بازی تمام شد! 🎉" else "بازی تمام شد",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
@@ -348,14 +348,24 @@ private fun GameOverContent(
             modifier = Modifier
                 .size(120.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
+                .background(
+                    color = if (state.isUnlocked) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    }
+                )
                 .padding(16.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "${state.percentage}%",
                 style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = if (state.isUnlocked) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onErrorContainer
+                },
             )
         }
 
@@ -365,18 +375,38 @@ private fun GameOverContent(
             textAlign = TextAlign.Center,
         )
 
-        val feedback = when (state.percentage) {
-            100 -> "عالی! تمام کلمات را صحیح توپ زدی! 🌟"
-            in 80..99 -> "خیلی خوب! نزدیک به کمال! 😊"
-            in 60..79 -> "خوب! سعی کن بیشتر تمرین کنی 💪"
-            else -> "دوباره تلاش کن! 🔄"
+        val (feedback, requirement) = when {
+            state.gameType == "letters" && state.isUnlocked -> {
+                "عالی! تمام حروف را صحیح شناسایی کردی! 🌟" to "✓ حروف آزاد شد!"
+            }
+            state.gameType == "letters" && !state.isUnlocked -> {
+                "نزدیک بود! اما برای پیش رفتن باید 100% درست شناسایی کنی." to "❌ نیاز: 100%"
+            }
+            state.gameType == "vocabulary" && state.isUnlocked -> {
+                "عالی! واژگان را خوب یاد گرفتی! 🌟" to "✓ واژگان آزاد شد!"
+            }
+            else -> {
+                "خوب تلاش کردی! دوباره سعی کن." to "❌ نیاز: 90%"
+            }
         }
 
         Text(
             text = feedback,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+
+        Text(
+            text = requirement,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (state.isUnlocked) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.error
+            },
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 8.dp),
         )
 
         Button(

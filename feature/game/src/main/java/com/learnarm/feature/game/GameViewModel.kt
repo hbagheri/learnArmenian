@@ -34,6 +34,8 @@ sealed class GameUiState {
         val score: Int,
         val totalWords: Int,
         val percentage: Int,
+        val gameType: String = "letters", // "letters" or "vocabulary"
+        val isUnlocked: Boolean = false, // true if 100% for letters, >= 90% for vocabulary
     ) : GameUiState()
 }
 
@@ -97,10 +99,14 @@ class GameViewModel @Inject constructor() : ViewModel() {
             val newScore = if (isCorrect) state.score + 1 else state.score
 
             if (newMatches.size == state.totalWords) {
+                val percentage = (newScore * 100) / state.totalWords
+                val isUnlocked = percentage == 100 // Letters need 100%, vocabulary needs 90%
                 _gameState.value = GameUiState.GameOver(
                     score = newScore,
                     totalWords = state.totalWords,
-                    percentage = (newScore * 100) / state.totalWords,
+                    percentage = percentage,
+                    gameType = "letters",
+                    isUnlocked = isUnlocked,
                 )
             } else {
                 _gameState.value = state.copy(

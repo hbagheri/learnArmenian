@@ -124,7 +124,7 @@ private fun HomeContent(
             Text("داستان‌های کوتاه")
         }
         Button(onClick = onStartGame, modifier = Modifier.fillMaxWidth()) {
-            Text("بازی تطابق واژگان")
+            Text("بازی شناسایی حروف")
         }
 
         when (state) {
