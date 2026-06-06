@@ -308,23 +308,38 @@ private fun LessonRunnerContent(
                             )
                             LessonPhraseCard(phrase = stepPhrase)
 
-                            if (practicePhase == PracticePhase.Idle && practiceResult == null) {
+                            // Always show listen button
+                            if (practicePhase == PracticePhase.Idle) {
                                 OutlinedButton(
                                     onClick = { onPlayPhraseAudio(stepPhrase.armenian) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Text("🔊 بشنو")
                                 }
+                            }
+
+                            if (practicePhase == PracticePhase.Idle && practiceResult == null) {
                                 Text(
-                                    text = "اول عبارت رو بشنو، بعد خودت تکرار کن.",
-                                    fontSize = 14.sp,
+                                    text = "اول عبارت رو بشنو، بعد خودت تکرار کن. می‌تونی دفعات زیادی تکرار کنی تا امتیاز بالا ببری!",
+                                    fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
                                 )
                             }
 
+                            // Show score result
                             practiceResult?.let { result ->
                                 ScoreGaugeCard(result, stepPhrase.armenian)
+
+                                // Show retry option if score is low
+                                if (result.score < 0.8f) {
+                                    Text(
+                                        text = "امتیاز رو بالا ببر! دوباره تلاش کن 💪",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
                             }
                             practiceError?.let { error ->
                                 Text(
@@ -334,21 +349,20 @@ private fun LessonRunnerContent(
                                 )
                             }
 
+                            // Recording and control buttons
                             when (practicePhase) {
                                 PracticePhase.Idle -> {
-                                    if (practiceResult == null) {
-                                        if (!hasMicPermission) {
-                                            Button(onClick = onRequestMic,
-                                                modifier = Modifier.fillMaxWidth()) {
-                                                Text("اجازه‌ی دسترسی به میکروفون")
-                                            }
-                                        } else {
-                                            PracticeMicButton(
-                                                label = "🎤 ضبط کن",
-                                                color = MaterialTheme.colorScheme.primary,
-                                                onClick = onStartRecording,
-                                            )
+                                    if (!hasMicPermission) {
+                                        Button(onClick = onRequestMic,
+                                            modifier = Modifier.fillMaxWidth()) {
+                                            Text("اجازه‌ی دسترسی به میکروفون")
                                         }
+                                    } else {
+                                        PracticeMicButton(
+                                            label = "🎤 ضبط کن",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            onClick = onStartRecording,
+                                        )
                                     }
                                 }
                                 PracticePhase.Recording -> {
@@ -393,7 +407,7 @@ private fun LessonRunnerContent(
             val isPractice = currentStep.type == "PRACTICE_PHRASE"
             val canContinue = when {
                 isQuiz -> answerResult == true
-                isPractice -> practiceResult != null && practicePhase == PracticePhase.Idle
+                isPractice -> practicePhase == PracticePhase.Idle && practiceResult != null
                 else -> true
             }
 
@@ -403,7 +417,12 @@ private fun LessonRunnerContent(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = canContinue,
                 ) {
-                    Text("تأیید و ادامه")
+                    Text(
+                        if (isPractice && practiceResult != null && practiceResult.score < 0.8f)
+                            "ادامه (بدون تکمیل)"
+                        else
+                            "تأیید و ادامه"
+                    )
                 }
             }
             Button(
