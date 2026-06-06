@@ -83,8 +83,14 @@ fun LessonRunnerScreen(
                     stepPhrase = stepPhrases[currentStep.itemKey],
                     onStepCompleted = {
                         viewModel.markStepCompleted(currentStep.itemKey)
-                        viewModel.moveToNextStep()
-                        onStepCompleted()
+                        val nextIndex = currentStepIndex + 1
+                        if (nextIndex >= steps.size) {
+                            // Lesson complete - navigate back
+                            onStepCompleted()
+                        } else {
+                            // Move to next step (don't call parent callback - avoids recomposition reset)
+                            viewModel.moveToNextStep()
+                        }
                     },
                     onBack = onBack,
                     modifier = modifier,
