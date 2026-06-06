@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Production traffic must be HTTPS (Cloudflare tunnel).
+  Cleartext is permitted only for local dev addresses:
+    * localhost / 127.0.0.1 — for `adb reverse tcp:8000 tcp:8000` testing
+    * 10.0.2.2              — Android emulator's view of the host machine
+  To reach the laptop directly over LAN, add the laptop's IP as another
+  <domain>...</domain> entry below (exact match — not CIDR).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
