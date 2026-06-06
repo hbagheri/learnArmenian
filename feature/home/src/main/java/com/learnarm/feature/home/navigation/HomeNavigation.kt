@@ -14,6 +14,7 @@ fun NavGraphBuilder.homeScreen(
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
     onOpenStories: () -> Unit,
+    onStartGame: () -> Unit,
     onContinueLesson: () -> Unit,
 ) {
     composable<HomeRoute> {
@@ -23,6 +24,7 @@ fun NavGraphBuilder.homeScreen(
             onStartPractice = onStartPractice,
             onOpenReviews = onOpenReviews,
             onOpenStories = onOpenStories,
+            onStartGame = onStartGame,
             onContinueLesson = onContinueLesson,
         )
     }

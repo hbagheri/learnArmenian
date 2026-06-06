@@ -42,6 +42,7 @@ fun HomeScreen(
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
     onOpenStories: () -> Unit,
+    onStartGame: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -55,6 +56,7 @@ fun HomeScreen(
         onStartPractice = onStartPractice,
         onOpenReviews = onOpenReviews,
         onOpenStories = onOpenStories,
+        onStartGame = onStartGame,
         onContinueLesson = onContinueLesson,
         modifier = modifier,
     )
@@ -69,6 +71,7 @@ private fun HomeContent(
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
     onOpenStories: () -> Unit,
+    onStartGame: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -119,6 +122,9 @@ private fun HomeContent(
         }
         OutlinedButton(onClick = onOpenStories, modifier = Modifier.fillMaxWidth()) {
             Text("داستان‌های کوتاه")
+        }
+        Button(onClick = onStartGame, modifier = Modifier.fillMaxWidth()) {
+            Text("بازی تطابق واژگان")
         }
 
         when (state) {
@@ -251,6 +257,7 @@ private fun HomeContentPreview() {
             onStartPractice = {},
             onOpenReviews = {},
             onOpenStories = {},
+            onStartGame = {},
             onContinueLesson = {},
         )
     }

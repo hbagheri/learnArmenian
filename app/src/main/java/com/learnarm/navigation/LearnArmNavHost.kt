@@ -23,6 +23,8 @@ import com.learnarm.feature.reviews.navigation.reviewsScreen
 import com.learnarm.feature.stories.navigation.navigateToStories
 import com.learnarm.feature.stories.navigation.navigateToStoryReader
 import com.learnarm.feature.stories.navigation.storiesScreen
+import com.learnarm.feature.game.navigation.gameScreen
+import com.learnarm.feature.game.navigation.navigateToGame
 
 @Composable
 fun LearnArmNavHost(
@@ -42,6 +44,7 @@ fun LearnArmNavHost(
             onStartPractice = { navController.navigateToPractice() },
             onOpenReviews = { navController.navigateToReviews() },
             onOpenStories = { navController.navigateToStories() },
+            onStartGame = { navController.navigateToGame() },
             onContinueLesson = { navController.navigateToLessons() },
         )
         quizScreen(onBack = { navController.popBackStack() })
@@ -52,6 +55,7 @@ fun LearnArmNavHost(
             onBack = { navController.popBackStack() },
             onStorySelected = { navController.navigateToStoryReader() },
         )
+        gameScreen(onBack = { navController.popBackStack() })
         lessonsScreen(
             sharedViewModel = lessonsSharedViewModel,
             onLessonSelected = { lessonId ->
