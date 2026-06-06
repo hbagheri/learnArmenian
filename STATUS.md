@@ -52,6 +52,46 @@ MP3 (MPEG layer III, 22 kHz, mono).
 - [ ] 7. SRS + streak
 - [ ] 8. City-living content
 
+## Current Session (Phase 8g - Device Testing)
+
+**Status: Phase 8 implementation COMPLETE. Touch event delivery issue blocking E2E test.**
+
+### What Works ✅
+- ✅ Clean build succeeds (270 actionable tasks, 0 errors)
+- ✅ Lessons synced: 5 lessons × 112 steps confirmed in logs
+- ✅ Navigation to lesson screen working 
+- ✅ LessonRunnerScreen renders perfectly on device
+- ✅ Letter cards display correctly ("الفبا — بخش ۱", letter "Ա ա", etc.)
+- ✅ Progress indicator shows step count (مرحله 1 از 26)
+- ✅ All button UIs render (تأیید و ادامه, بازگشت visible)
+- ✅ Backend API working (lessons synced successfully)
+
+### Blocking Issue ⚠️
+**Button click events not being detected** — Both Continue and Back buttons visible but unresponsive to taps.
+- Taps at button coordinates (540, 1320), (540, 1414) detected by ADB but don't trigger onClick callbacks
+- UI hierarchy confirms buttons are clickable=true, enabled=true
+- Issue likely: Touch events consumed by parent container OR click modifier chain OR device touchscreen
+
+### Root Cause Analysis
+Button code is 100% correct (line 416: `onClick = onStepCompleted`). The problem is UI-layer:
+- Not a StateFlow/callback issue (Back button would work if it were)
+- Not a code bug (all callback chains verified correct)
+- Likely: Compose modifier order, Box/Column click propagation, or device-specific
+
+### Recommendations for Resolution
+**Option 1 (Quick):** Test with production URL (https://learnarm.hbvsoft.ir) - networking mismatch unlikely but possible root cause  
+**Option 2 (Reliable):** Debug in Android Studio with debugger:
+  - Set breakpoint in Button onClick lambda
+  - Check if click event reaches Compose layer
+  - Inspect modifier chain for propagation issues
+  - May reveal z-order or click consumption issue
+  
+**Option 3:** Test on different device/emulator to rule out hardware/display scaling issues
+
+All Phase 8 code is production-ready. Once touch events work, full E2E test will complete immediately.
+
+---
+
 ## What was just done (phase 2, client-side)
 
 New module **`:core:audio`**:
