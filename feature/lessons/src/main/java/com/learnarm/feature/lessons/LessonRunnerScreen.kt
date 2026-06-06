@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,8 +19,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -112,6 +118,20 @@ private fun LessonRunnerContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var selectedAnswerIndex by remember { mutableIntStateOf(-1) }
+    var answerResult by remember { mutableStateOf<Boolean?>(null) }
+    var quizAnswerOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(currentStep.type) {
+        if (currentStep.type == "QUIZ_LETTER" && stepLetter != null) {
+            quizAnswerOptions = generateLetterQuizOptions(stepLetter)
+        } else if (currentStep.type == "QUIZ_PHRASE" && stepPhrase != null) {
+            quizAnswerOptions = generatePhraseQuizOptions(stepPhrase)
+        }
+        selectedAnswerIndex = -1
+        answerResult = null
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -149,10 +169,82 @@ private fun LessonRunnerContent(
                     }
                 }
                 "QUIZ_LETTER" -> {
-                    Text(text = "آزمون حرف: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
+                    if (stepLetter != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            LessonLetterCard(letter = stepLetter)
+                            Text(
+                                text = "کدام یک نام صحیح این حرف است؟",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                quizAnswerOptions.forEachIndexed { index, option ->
+                                    QuizAnswerButton(
+                                        text = option,
+                                        isSelected = selectedAnswerIndex == index,
+                                        isCorrect = if (answerResult != null) index == 0 else null,
+                                        enabled = answerResult == null,
+                                        onClick = {
+                                            selectedAnswerIndex = index
+                                            answerResult = (index == 0)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                            if (answerResult != null) {
+                                Text(
+                                    text = if (answerResult == true) "✓ درست!" else "✗ غلط، دوباره امتحان کنید",
+                                    fontSize = 16.sp,
+                                    color = if (answerResult == true) Color.Green else Color.Red,
+                                )
+                            }
+                        }
+                    } else {
+                        Text(text = "حرف برای آزمون بارگذاری نشد", fontSize = 18.sp)
+                    }
                 }
                 "QUIZ_PHRASE" -> {
-                    Text(text = "آزمون عبارت: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
+                    if (stepPhrase != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            LessonPhraseCard(phrase = stepPhrase)
+                            Text(
+                                text = "معنی این عبارت چیست؟",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                quizAnswerOptions.forEachIndexed { index, option ->
+                                    QuizAnswerButton(
+                                        text = option,
+                                        isSelected = selectedAnswerIndex == index,
+                                        isCorrect = if (answerResult != null) index == 0 else null,
+                                        enabled = answerResult == null,
+                                        onClick = {
+                                            selectedAnswerIndex = index
+                                            answerResult = (index == 0)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                            if (answerResult != null) {
+                                Text(
+                                    text = if (answerResult == true) "✓ درست!" else "✗ غلط، دوباره امتحان کنید",
+                                    fontSize = 16.sp,
+                                    color = if (answerResult == true) Color.Green else Color.Red,
+                                )
+                            }
+                        }
+                    } else {
+                        Text(text = "عبارت برای آزمون بارگذاری نشد", fontSize = 18.sp)
+                    }
                 }
                 "PRACTICE_PHRASE" -> {
                     Text(text = "تمرین: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
@@ -163,9 +255,13 @@ private fun LessonRunnerContent(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val isQuiz = currentStep.type in listOf("QUIZ_LETTER", "QUIZ_PHRASE")
+            val canContinue = !isQuiz || answerResult == true
+
             Button(
                 onClick = onStepCompleted,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = canContinue,
             ) {
                 Text("تأیید و ادامه")
             }
@@ -177,6 +273,48 @@ private fun LessonRunnerContent(
             }
         }
     }
+}
+
+@Composable
+private fun QuizAnswerButton(
+    text: String,
+    isSelected: Boolean,
+    isCorrect: Boolean?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val backgroundColor = when {
+        isCorrect == true -> Color(0xFF4CAF50)
+        isCorrect == false -> Color(0xFFF44336)
+        isSelected && !enabled -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
+    ) {
+        Text(text = text, color = Color.White)
+    }
+}
+
+private fun generateLetterQuizOptions(correct: LetterEntity): List<String> {
+    return listOf(correct.name) + listOf(
+        "բար",
+        "տե",
+        "շա",
+    ).shuffled().take(3)
+}
+
+private fun generatePhraseQuizOptions(correct: PhraseEntity): List<String> {
+    return listOf(correct.persian) + listOf(
+        "خوشحال شدم",
+        "ممنون",
+        "بله",
+    ).shuffled().take(3)
 }
 
 @Composable
