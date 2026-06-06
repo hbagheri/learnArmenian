@@ -2,6 +2,9 @@ package com.learnarm.feature.lessons
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.learnarm.core.audio.PronunciationScorer
+import com.learnarm.core.audio.ScoreResult
+import com.learnarm.core.audio.SpeechRecorder
 import com.learnarm.core.database.entity.LessonEntity
 import com.learnarm.core.database.entity.LessonStepEntity
 import com.learnarm.core.database.entity.LetterEntity
@@ -10,6 +13,7 @@ import com.learnarm.core.data.repository.LessonRepository
 import com.learnarm.core.data.repository.LetterRepository
 import com.learnarm.core.data.repository.PhraseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,11 +47,15 @@ sealed class LessonsListUiState {
     data class Content(val lessons: List<LessonEntity>) : LessonsListUiState()
 }
 
+enum class PracticePhase { Idle, Recording, Scoring }
+
 @HiltViewModel
 class LessonRunnerViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val letterRepository: LetterRepository,
     private val phraseRepository: PhraseRepository,
+    private val recorder: SpeechRecorder,
+    private val scorer: PronunciationScorer,
 ) : ViewModel() {
 
     private val _lessonId = MutableStateFlow(1)
@@ -65,6 +73,17 @@ class LessonRunnerViewModel @Inject constructor(
 
     private val _stepPhrases = MutableStateFlow<Map<String, PhraseEntity>>(emptyMap())
     val stepPhrases: StateFlow<Map<String, PhraseEntity>> = _stepPhrases.asStateFlow()
+
+    private val _practicePhase = MutableStateFlow(PracticePhase.Idle)
+    val practicePhase: StateFlow<PracticePhase> = _practicePhase.asStateFlow()
+
+    private val _practiceResult = MutableStateFlow<ScoreResult.Success?>(null)
+    val practiceResult: StateFlow<ScoreResult.Success?> = _practiceResult.asStateFlow()
+
+    private val _practiceError = MutableStateFlow<ScoreResult.Reason?>(null)
+    val practiceError: StateFlow<ScoreResult.Reason?> = _practiceError.asStateFlow()
+
+    private var scoreJob: Job? = null
 
     fun setLessonId(id: Int) {
         _lessonId.value = id
@@ -162,6 +181,65 @@ class LessonRunnerViewModel @Inject constructor(
 
     fun isLessonComplete(totalSteps: Int): Boolean {
         return _completedStepIds.value.size >= totalSteps
+    }
+
+    fun startRecording() {
+        if (_practicePhase.value != PracticePhase.Idle) return
+        val started = recorder.start()
+        if (!started) {
+            _practiceError.value = ScoreResult.Reason.EmptyAudio
+            return
+        }
+        _practicePhase.value = PracticePhase.Recording
+        _practiceResult.value = null
+        _practiceError.value = null
+    }
+
+    fun stopAndScore(armenianText: String) {
+        if (_practicePhase.value != PracticePhase.Recording) return
+        val file = recorder.stop()
+        if (file == null) {
+            _practicePhase.value = PracticePhase.Idle
+            _practiceError.value = ScoreResult.Reason.EmptyAudio
+            return
+        }
+        _practicePhase.value = PracticePhase.Scoring
+        scoreJob = viewModelScope.launch {
+            val outcome = scorer.score(file, armenianText)
+            file.delete()
+            val nextState = when (outcome) {
+                is ScoreResult.Success -> {
+                    _practiceResult.value = outcome
+                    _practiceError.value = null
+                    PracticePhase.Idle
+                }
+                is ScoreResult.Failed -> {
+                    _practiceResult.value = null
+                    _practiceError.value = outcome.reason
+                    PracticePhase.Idle
+                }
+            }
+            _practicePhase.value = nextState
+        }
+    }
+
+    fun cancelRecording() {
+        recorder.cancel()
+        if (_practicePhase.value == PracticePhase.Recording) {
+            _practicePhase.value = PracticePhase.Idle
+        }
+    }
+
+    fun clearPracticeResult() {
+        _practiceResult.value = null
+        _practiceError.value = null
+        _practicePhase.value = PracticePhase.Idle
+    }
+
+    override fun onCleared() {
+        scoreJob?.cancel()
+        recorder.cancel()
+        super.onCleared()
     }
 }
 

@@ -1,13 +1,21 @@
 package com.learnarm.feature.lessons
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -15,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,17 +35,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.learnarm.core.audio.ScoreResult
 import com.learnarm.core.database.entity.LessonEntity
 import com.learnarm.core.database.entity.LessonStepEntity
 import com.learnarm.core.database.entity.LetterEntity
 import com.learnarm.core.database.entity.PhraseEntity
 import com.learnarm.core.designsystem.theme.LearnArmTheme
+import com.learnarm.feature.lessons.PracticePhase
 
 @Composable
 fun LessonRunnerScreen(
@@ -57,6 +70,24 @@ fun LessonRunnerScreen(
     val completedStepIds by viewModel.completedStepIds.collectAsStateWithLifecycle()
     val stepLetters by viewModel.stepLetters.collectAsStateWithLifecycle()
     val stepPhrases by viewModel.stepPhrases.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    var hasMicPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasMicPermission = granted
+        if (granted) viewModel.startRecording()
+    }
+
+    val practicePhase by viewModel.practicePhase.collectAsStateWithLifecycle()
+    val practiceResult by viewModel.practiceResult.collectAsStateWithLifecycle()
+    val practiceError by viewModel.practiceError.collectAsStateWithLifecycle()
 
     when (val state = uiState) {
         LessonRunnerUiState.Loading -> {
@@ -87,6 +118,13 @@ fun LessonRunnerScreen(
                     totalSteps = steps.size,
                     stepLetter = stepLetters[currentStep.itemKey],
                     stepPhrase = stepPhrases[currentStep.itemKey],
+                    hasMicPermission = hasMicPermission,
+                    onRequestMic = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                    practicePhase = practicePhase,
+                    practiceResult = practiceResult,
+                    practiceError = practiceError,
+                    onStartRecording = viewModel::startRecording,
+                    onStopAndScore = { viewModel.stopAndScore(stepPhrases[currentStep.itemKey]?.armenian ?: "") },
                     onStepCompleted = {
                         viewModel.markStepCompleted(currentStep.itemKey)
                         val nextIndex = currentStepIndex + 1
@@ -114,6 +152,13 @@ private fun LessonRunnerContent(
     totalSteps: Int,
     stepLetter: LetterEntity?,
     stepPhrase: PhraseEntity?,
+    hasMicPermission: Boolean,
+    onRequestMic: () -> Unit,
+    practicePhase: PracticePhase,
+    practiceResult: ScoreResult.Success?,
+    practiceError: ScoreResult.Reason?,
+    onStartRecording: () -> Unit,
+    onStopAndScore: () -> Unit,
     onStepCompleted: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -258,13 +303,66 @@ private fun LessonRunnerContent(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
-                            LessonPhraseCard(phrase = stepPhrase)
                             Text(
-                                text = "این عبارت را بخوانید و روی دکمه ضبط بزنید",
+                                text = "این عبارت را با صدای بلند تکرار کنید:",
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
                             )
+                            LessonPhraseCard(phrase = stepPhrase)
+
+                            practiceResult?.let { result ->
+                                PracticeResultCard(result, stepPhrase.armenian)
+                            }
+                            practiceError?.let { error ->
+                                Text(
+                                    text = practiceLessonErrorMessage(error),
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 14.sp,
+                                )
+                            }
+
+                            when (practicePhase) {
+                                PracticePhase.Idle -> {
+                                    if (!hasMicPermission) {
+                                        Button(onClick = onRequestMic,
+                                            modifier = Modifier.fillMaxWidth()) {
+                                            Text("اجازه‌ی دسترسی به میکروفون")
+                                        }
+                                    } else {
+                                        PracticeMicButton(
+                                            label = "ضبط",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            onClick = onStartRecording,
+                                        )
+                                    }
+                                }
+                                PracticePhase.Recording -> {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                    Text(
+                                        text = "در حال ضبط… وقتی تمام شد، توقف بزنید.",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    PracticeMicButton(
+                                        label = "توقف و امتیاز",
+                                        color = Color(0xFFD32F2F),
+                                        onClick = onStopAndScore,
+                                    )
+                                }
+                                PracticePhase.Scoring -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        Text(
+                                            text = "در حال امتیازدهی…",
+                                            fontSize = 12.sp,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     } else {
                         Text(text = "عبارت برای تمرین بارگذاری نشد", fontSize = 18.sp)
@@ -277,14 +375,21 @@ private fun LessonRunnerContent(
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val isQuiz = currentStep.type in listOf("QUIZ_LETTER", "QUIZ_PHRASE")
-            val canContinue = !isQuiz || answerResult == true
+            val isPractice = currentStep.type == "PRACTICE_PHRASE"
+            val canContinue = when {
+                isQuiz -> answerResult == true
+                isPractice -> practiceResult != null && practicePhase == PracticePhase.Idle
+                else -> true
+            }
 
-            Button(
-                onClick = onStepCompleted,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canContinue,
-            ) {
-                Text("تأیید و ادامه")
+            if (!(isPractice && practicePhase != PracticePhase.Idle)) {
+                Button(
+                    onClick = onStepCompleted,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = canContinue,
+                ) {
+                    Text("تأیید و ادامه")
+                }
             }
             Button(
                 onClick = onBack,
@@ -461,6 +566,73 @@ private fun LessonPhraseCard(
             }
         }
     }
+}
+
+@Composable
+private fun PracticeMicButton(
+    label: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .background(color, shape = CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun PracticeResultCard(success: ScoreResult.Success, target: String) {
+    val percent = (success.score * 100).toInt().coerceIn(0, 100)
+    val color = when {
+        success.score >= 0.8f -> Color(0xFF2E7D32)
+        success.score >= 0.5f -> Color(0xFFEF6C00)
+        else -> Color(0xFFC62828)
+    }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = color, contentColor = Color.White),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "امتیاز: %$percent",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "بازخورد: ${success.feedback}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (success.recognized.isNotBlank() && success.recognized != target) {
+                Text(
+                    text = "شنیده شد: ${success.recognized}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+private fun practiceLessonErrorMessage(reason: ScoreResult.Reason): String = when (reason) {
+    ScoreResult.Reason.Network -> "خطای شبکه — اتصال را بررسی کنید"
+    ScoreResult.Reason.Server -> "سرور پاسخ‌گو نیست"
+    ScoreResult.Reason.EmptyAudio -> "صدایی ضبط نشد — دوباره امتحان کنید"
+    ScoreResult.Reason.Parse -> "پاسخ سرور قابل پردازش نبود"
 }
 
 @Composable
