@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +28,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.learnarm.core.database.entity.LessonEntity
 import com.learnarm.core.database.entity.LessonStepEntity
+import com.learnarm.core.database.entity.LetterEntity
+import com.learnarm.core.database.entity.PhraseEntity
 import com.learnarm.core.designsystem.theme.LearnArmTheme
 
 @Composable
@@ -45,6 +49,8 @@ fun LessonRunnerScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentStepIndex by viewModel.currentStepIndex.collectAsStateWithLifecycle()
     val completedStepIds by viewModel.completedStepIds.collectAsStateWithLifecycle()
+    val stepLetters by viewModel.stepLetters.collectAsStateWithLifecycle()
+    val stepPhrases by viewModel.stepPhrases.collectAsStateWithLifecycle()
 
     when (val state = uiState) {
         LessonRunnerUiState.Loading -> {
@@ -73,6 +79,8 @@ fun LessonRunnerScreen(
                     currentStep = currentStep,
                     stepIndex = currentStepIndex,
                     totalSteps = steps.size,
+                    stepLetter = stepLetters[currentStep.itemKey],
+                    stepPhrase = stepPhrases[currentStep.itemKey],
                     onStepCompleted = {
                         viewModel.markStepCompleted(currentStep.itemKey)
                         viewModel.moveToNextStep()
@@ -92,6 +100,8 @@ private fun LessonRunnerContent(
     currentStep: LessonStepEntity,
     stepIndex: Int,
     totalSteps: Int,
+    stepLetter: LetterEntity?,
+    stepPhrase: PhraseEntity?,
     onStepCompleted: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -118,16 +128,27 @@ private fun LessonRunnerContent(
         )
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             when (currentStep.type) {
-                "letter" -> {
-                    Text(text = "حرف: ${currentStep.itemKey}", fontSize = 24.sp)
+                "SHOW_LETTER" -> {
+                    if (stepLetter != null) {
+                        LessonLetterCard(letter = stepLetter)
+                    } else {
+                        Text(text = "حرف بارگذاری نشد", fontSize = 18.sp)
+                    }
                 }
-                "phrase" -> {
-                    Text(text = "عبارت: ${currentStep.itemKey}", fontSize = 18.sp)
+                "SHOW_PHRASE" -> {
+                    if (stepPhrase != null) {
+                        LessonPhraseCard(phrase = stepPhrase)
+                    } else {
+                        Text(text = "عبارت بارگذاری نشد", fontSize = 18.sp)
+                    }
                 }
-                "quiz" -> {
-                    Text(text = "آزمون: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
+                "QUIZ_LETTER" -> {
+                    Text(text = "آزمون حرف: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
                 }
-                "practice" -> {
+                "QUIZ_PHRASE" -> {
+                    Text(text = "آزمون عبارت: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
+                }
+                "PRACTICE_PHRASE" -> {
                     Text(text = "تمرین: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
                 }
                 else -> {
@@ -178,6 +199,101 @@ private fun LessonCompletedScreen(
         )
         Button(onClick = onBack) {
             Text("بازگشت به درس‌ها")
+        }
+    }
+}
+
+@Composable
+private fun LessonLetterCard(
+    letter: LetterEntity,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        colors = CardDefaults.cardColors(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "${letter.upper} ${letter.lower}",
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = letter.nameLatin,
+                fontSize = 20.sp,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Text(
+                text = letter.name,
+                fontSize = 18.sp,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = letter.pronunciationFa,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LessonPhraseCard(
+    phrase: PhraseEntity,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        colors = CardDefaults.cardColors(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = phrase.armenian,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = phrase.transliteration,
+                fontSize = 16.sp,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = phrase.persian,
+                fontSize = 20.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            phrase.note?.takeIf { it.isNotBlank() }?.let { noteText ->
+                Text(
+                    text = noteText,
+                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

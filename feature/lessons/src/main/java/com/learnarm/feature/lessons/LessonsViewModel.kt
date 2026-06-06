@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.learnarm.core.database.entity.LessonEntity
 import com.learnarm.core.database.entity.LessonStepEntity
+import com.learnarm.core.database.entity.LetterEntity
+import com.learnarm.core.database.entity.PhraseEntity
 import com.learnarm.core.data.repository.LessonRepository
+import com.learnarm.core.data.repository.LetterRepository
+import com.learnarm.core.data.repository.PhraseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +46,8 @@ sealed class LessonsListUiState {
 @HiltViewModel
 class LessonRunnerViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
+    private val letterRepository: LetterRepository,
+    private val phraseRepository: PhraseRepository,
 ) : ViewModel() {
 
     private val _lessonId = MutableStateFlow(1)
@@ -54,6 +60,12 @@ class LessonRunnerViewModel @Inject constructor(
     private val _completedStepIds = MutableStateFlow<Set<String>>(emptySet())
     val completedStepIds: StateFlow<Set<String>> = _completedStepIds.asStateFlow()
 
+    private val _stepLetters = MutableStateFlow<Map<String, LetterEntity>>(emptyMap())
+    val stepLetters: StateFlow<Map<String, LetterEntity>> = _stepLetters.asStateFlow()
+
+    private val _stepPhrases = MutableStateFlow<Map<String, PhraseEntity>>(emptyMap())
+    val stepPhrases: StateFlow<Map<String, PhraseEntity>> = _stepPhrases.asStateFlow()
+
     fun setLessonId(id: Int) {
         _lessonId.value = id
         loadLesson(id)
@@ -65,9 +77,77 @@ class LessonRunnerViewModel @Inject constructor(
             if (lesson != null) {
                 val steps = lessonRepository.getSteps(lessonId)
                 _uiState.value = LessonRunnerUiState.Content(lesson, steps)
+                // Pre-load letters and phrases referenced in the steps
+                loadStepContent(steps)
             } else {
                 _uiState.value = LessonRunnerUiState.Error("درس یافت نشد")
             }
+        }
+    }
+
+    private fun loadStepContent(steps: List<LessonStepEntity>) {
+        viewModelScope.launch {
+            val letters = mutableMapOf<String, LetterEntity>()
+            val phrases = mutableMapOf<String, PhraseEntity>()
+
+            steps.forEach { step ->
+                when (step.type) {
+                    "SHOW_LETTER" -> {
+                        try {
+                            val letterId = step.itemKey.substringAfter(":").toIntOrNull() ?: return@forEach
+                            val letter = letterRepository.getById(letterId)
+                            if (letter != null) {
+                                letters[step.itemKey] = letter
+                            }
+                        } catch (e: Exception) {
+                            // Silently handle errors
+                        }
+                    }
+                    "SHOW_PHRASE" -> {
+                        try {
+                            val phraseId = step.itemKey.substringAfter(":").toIntOrNull() ?: return@forEach
+                            val phrase = phraseRepository.getById(phraseId)
+                            if (phrase != null) {
+                                phrases[step.itemKey] = phrase
+                            }
+                        } catch (e: Exception) {
+                            // Silently handle errors
+                        }
+                    }
+                    "QUIZ_LETTER", "QUIZ_PHRASE" -> {
+                        try {
+                            val itemId = step.itemKey.substringAfter(":").toIntOrNull() ?: return@forEach
+                            if (step.type == "QUIZ_LETTER") {
+                                val letter = letterRepository.getById(itemId)
+                                if (letter != null) {
+                                    letters[step.itemKey] = letter
+                                }
+                            } else {
+                                val phrase = phraseRepository.getById(itemId)
+                                if (phrase != null) {
+                                    phrases[step.itemKey] = phrase
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // Silently handle errors
+                        }
+                    }
+                    "PRACTICE_PHRASE" -> {
+                        try {
+                            val phraseId = step.itemKey.substringAfter(":").toIntOrNull() ?: return@forEach
+                            val phrase = phraseRepository.getById(phraseId)
+                            if (phrase != null) {
+                                phrases[step.itemKey] = phrase
+                            }
+                        } catch (e: Exception) {
+                            // Silently handle errors
+                        }
+                    }
+                }
+            }
+
+            _stepLetters.value = letters
+            _stepPhrases.value = phrases
         }
     }
 
