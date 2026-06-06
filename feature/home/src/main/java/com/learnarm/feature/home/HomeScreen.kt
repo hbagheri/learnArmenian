@@ -250,6 +250,7 @@ private fun HomeContentPreview() {
             onOpenPhrases = {},
             onStartPractice = {},
             onOpenReviews = {},
+            onOpenStories = {},
             onContinueLesson = {},
         )
     }
