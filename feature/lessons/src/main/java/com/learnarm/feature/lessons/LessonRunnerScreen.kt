@@ -247,7 +247,28 @@ private fun LessonRunnerContent(
                     }
                 }
                 "PRACTICE_PHRASE" -> {
-                    Text(text = "تمرین: ${currentStep.promptFa ?: ""}", fontSize = 18.sp)
+                    if (stepPhrase != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(
+                                text = "تمرین تلفظ",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            LessonPhraseCard(phrase = stepPhrase)
+                            Text(
+                                text = "این عبارت را بخوانید و روی دکمه ضبط بزنید",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    } else {
+                        Text(text = "عبارت برای تمرین بارگذاری نشد", fontSize = 18.sp)
+                    }
                 }
                 else -> {
                     Text(text = "نوع نامعلوم: ${currentStep.type}", fontSize = 16.sp)
