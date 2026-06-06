@@ -295,8 +295,8 @@ All content delivered as **versioned JSON packs** from FastAPI backend. Client c
 | Vocabulary data (1000+ words, icons, transliterations) | **User** | Iterative (Google Sheets → JSON) |
 | Phrases (200+) | **User** | Before phase 9 |
 | Stories (10–15 x 300–1000 words) | **User** + curate from Armenian sources | Before phase 11 |
-| Backend JSON serialization + validation | **Claude** | Each phase |
-| Android UI + sync logic | **Claude** | Each phase |
+| Backend JSON serialization + validation | **AI assistant** | Each phase |
+| Android UI + sync logic | **AI assistant** | Each phase |
 
 ---
 

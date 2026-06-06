@@ -311,7 +311,7 @@ All content (lessons, stories, vocab games) is **versioned**:
 **Why backend-driven?**
 - ✅ Content updates without app release
 - ✅ Lessons/stories/games are **data**, not code → small JSON payloads
-- ✅ Claude doesn't need to touch the app after initial scaffolding
+- ✅ The AI assistant doesn't need to touch the app after initial scaffolding
 - ❌ But: Need a separate backend process to curate / seed content
 
 **Who populates `/content/lessons`, `/content/stories`, etc.?**
@@ -321,9 +321,9 @@ All content (lessons, stories, vocab games) is **versioned**:
 
 **How to avoid token explosion?**
 1. Content is authored **once**, stored in JSON
-2. Claude writes the backend endpoint logic (1× per phase)
-3. Content seed is edited by user or a text tool (not Claude)
-4. Claude only touches code, not content
+2. AI assistant writes the backend endpoint logic (1× per phase)
+3. Content seed is edited by user or a text tool (not AI)
+4. AI assistant only touches code, not content
 
 ---
 
@@ -360,6 +360,6 @@ python backend/validate_content.py data/*.json
 - **Offline mode:** Lessons + stories cached locally (already happens with Room)
 - **User accounts:** Track progress across devices (post-V1; needs backend DB + auth)
 - **Leaderboard:** Daily/weekly streak top users (post-V1)
-- **AI-generated stories:** Use Claude API to generate short stories on demand
+- **AI-generated stories:** Use an LLM API to generate short stories on demand
 - **Spaced-rep refinement:** Use SuperMemo-3 instead of SM-2
 - **Voice recording review:** Playback user's recording vs. target pronunciation

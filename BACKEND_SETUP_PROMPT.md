@@ -2,7 +2,7 @@
 
 ## Context
 
-A different Claude session and I are building **LearnArm**, a Persian→Armenian
+My collaborator and I are building **LearnArm**, a Persian→Armenian
 Android language-learning app. The Android client is local-only (Room DB,
 bundled content) but needs two backend capabilities that don't work well
 on-device:

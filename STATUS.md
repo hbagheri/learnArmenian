@@ -191,11 +191,8 @@ Phases 5 & 6 are signed off.
 
 - The project is fully path-portable. `local.properties` only points to the
   Android SDK (`/home/hassan/Android/Sdk`), not the project, so no edits needed.
-- Claude's auto-memory directory is keyed by absolute cwd. After moving the
-  project to a new location, the old memory dir at
-  `~/.claude/projects/-home-hassan-projects-personal-games-learnArmenian/`
-  becomes orphaned. Either move it to match the new cwd slug
-  (replace `/` with `-`, e.g. `/home/hassan/projects/personal/learnArmenian`
-  → `~/.claude/projects/-home-hassan-projects-personal-learnArmenian/`),
-  or just rely on this `STATUS.md` as the source of truth and let memory
-  rebuild from scratch.
+- The AI tool's auto-memory directory is keyed by absolute cwd. After moving
+  the project to a new location, the old memory dir becomes orphaned.
+  Either move it to match the new cwd slug (replace `/` with `-`), or just
+  rely on this `STATUS.md` as the source of truth and let memory rebuild
+  from scratch.
