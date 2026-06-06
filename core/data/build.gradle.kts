@@ -15,7 +15,7 @@ android {
         buildConfigField(
             "String",
             "LEARNARM_API_BASE_URL",
-            "\"${project.findProperty("learnarm.apiBaseUrl") ?: "https://learnarm-api.invalid"}\"",
+            "\"${project.findProperty("learnarm.apiBaseUrl") ?: "https://learnarm.hbvsoft.ir"}\"",
         )
     }
 
