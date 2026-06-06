@@ -82,10 +82,63 @@ class LevelsViewModel @Inject constructor(
                 val levels = levelsDto.map { Level.fromDto(it) }
                 _levelsState.value = LevelsUiState.Ready(levels)
             } catch (e: Exception) {
-                // Fallback to empty list on error
-                _levelsState.value = LevelsUiState.Ready(emptyList())
+                // Fallback to mock data on API error
+                _levelsState.value = LevelsUiState.Ready(getMockLevels())
             }
         }
+    }
+
+    private fun getMockLevels(): List<Level> {
+        return listOf(
+            Level(
+                id = 1,
+                title = "الفبا",
+                titleFa = "Letters - الفبای ارمنی",
+                description = "یادگیری ۳۹ حرف ارمنی",
+                isUnlocked = true,
+                phases = listOf(
+                    Phase(1, "شناسایی حروف", "تشخیص حروف و صدای آن‌ها - نیاز: ۱۰۰%", "learning"),
+                    Phase(2, "تکرار حروف", "تمرین تلفظ درست حروف - نیاز: ۸۲%", "learning"),
+                    Phase(3, "حروف در واژه‌ها", "حرف در شروع، وسط و انتهای واژه - نیاز: ۱۰۰%", "learning"),
+                    Phase(4, "امتحان حروف", "۴ مرحله: تلفظ، تطابق، شنیدن، واژه", "exam"),
+                ),
+            ),
+            Level(
+                id = 2,
+                title = "واژگان",
+                titleFa = "Vocabulary - کلمات",
+                description = "یادگیری ۲۰-۳۰ واژه از هر سطح",
+                isUnlocked = false,
+                phases = listOf(
+                    Phase(5, "معرفی واژه‌ها", "واژه‌های جدید و تلفظ آن‌ها", "learning"),
+                    Phase(6, "تمرین تلفظ واژه", "تکرار واژه‌ها - نیاز: ۹۰%", "learning"),
+                    Phase(7, "امتحان واژگان", "خوندن واژه بدون کمک صوتی - نیاز: ۹۰%", "exam"),
+                ),
+            ),
+            Level(
+                id = 3,
+                title = "جملات",
+                titleFa = "Sentences - جملات",
+                description = "یادگیری جملاتی و ساختار آن‌ها",
+                isUnlocked = false,
+                phases = listOf(
+                    Phase(8, "مفاهیم جملاتی", "فعل، فاعل، مفعول، قید", "learning"),
+                    Phase(9, "خوندن و تلفظ جملات", "تمرین خوندن جملات", "learning"),
+                    Phase(10, "امتحان جملات", "ترجمه فارسی → ارمنی", "exam"),
+                ),
+            ),
+            Level(
+                id = 4,
+                title = "رسانه‌ها",
+                titleFa = "Media - فیلم و خبر",
+                description = "فیلم‌ها و اخبار به ارمنی",
+                isUnlocked = false,
+                phases = listOf(
+                    Phase(11, "تماشای فیلم", "تماشای فیلم و نوشتن چیزی که شنیدی", "learning"),
+                    Phase(12, "خبر و ترجمه", "خواندن خبر و ترجمه به فارسی", "learning"),
+                ),
+            ),
+        )
     }
 
 
