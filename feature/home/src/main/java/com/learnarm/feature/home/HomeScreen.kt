@@ -42,7 +42,7 @@ fun HomeScreen(
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
     onOpenStories: () -> Unit,
-    onStartGame: () -> Unit,
+    onStartLearning: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -56,7 +56,7 @@ fun HomeScreen(
         onStartPractice = onStartPractice,
         onOpenReviews = onOpenReviews,
         onOpenStories = onOpenStories,
-        onStartGame = onStartGame,
+        onStartLearning = onStartLearning,
         onContinueLesson = onContinueLesson,
         modifier = modifier,
     )
@@ -71,7 +71,7 @@ private fun HomeContent(
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
     onOpenStories: () -> Unit,
-    onStartGame: () -> Unit,
+    onStartLearning: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -123,8 +123,8 @@ private fun HomeContent(
         OutlinedButton(onClick = onOpenStories, modifier = Modifier.fillMaxWidth()) {
             Text("داستان‌های کوتاه")
         }
-        Button(onClick = onStartGame, modifier = Modifier.fillMaxWidth()) {
-            Text("بازی شناسایی حروف")
+        Button(onClick = onStartLearning, modifier = Modifier.fillMaxWidth()) {
+            Text("سطح‌های آموزش")
         }
 
         when (state) {
@@ -257,7 +257,7 @@ private fun HomeContentPreview() {
             onStartPractice = {},
             onOpenReviews = {},
             onOpenStories = {},
-            onStartGame = {},
+            onStartLearning = {},
             onContinueLesson = {},
         )
     }

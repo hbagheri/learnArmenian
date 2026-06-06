@@ -25,6 +25,8 @@ import com.learnarm.feature.stories.navigation.navigateToStoryReader
 import com.learnarm.feature.stories.navigation.storiesScreen
 import com.learnarm.feature.game.navigation.gameScreen
 import com.learnarm.feature.game.navigation.navigateToGame
+import com.learnarm.feature.learning.navigation.learningScreen
+import com.learnarm.feature.learning.navigation.navigateToLearning
 
 @Composable
 fun LearnArmNavHost(
@@ -44,7 +46,7 @@ fun LearnArmNavHost(
             onStartPractice = { navController.navigateToPractice() },
             onOpenReviews = { navController.navigateToReviews() },
             onOpenStories = { navController.navigateToStories() },
-            onStartGame = { navController.navigateToGame() },
+            onStartLearning = { navController.navigateToLearning() },
             onContinueLesson = { navController.navigateToLessons() },
         )
         quizScreen(onBack = { navController.popBackStack() })
@@ -54,6 +56,16 @@ fun LearnArmNavHost(
         storiesScreen(
             onBack = { navController.popBackStack() },
             onStorySelected = { navController.navigateToStoryReader() },
+        )
+        learningScreen(
+            navController = navController,
+            onPhaseSelected = { phaseId ->
+                // Phase 1 → Letter Recognition Game (Phase 11)
+                if (phaseId == 1) {
+                    navController.navigateToGame()
+                }
+                // Other phases will be implemented later
+            },
         )
         gameScreen(onBack = { navController.popBackStack() })
         lessonsScreen(
