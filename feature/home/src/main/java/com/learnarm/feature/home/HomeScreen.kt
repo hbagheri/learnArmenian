@@ -41,6 +41,7 @@ fun HomeScreen(
     onOpenPhrases: () -> Unit,
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
+    onOpenStories: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -53,6 +54,7 @@ fun HomeScreen(
         onOpenPhrases = onOpenPhrases,
         onStartPractice = onStartPractice,
         onOpenReviews = onOpenReviews,
+        onOpenStories = onOpenStories,
         onContinueLesson = onContinueLesson,
         modifier = modifier,
     )
@@ -66,6 +68,7 @@ private fun HomeContent(
     onOpenPhrases: () -> Unit,
     onStartPractice: () -> Unit,
     onOpenReviews: () -> Unit,
+    onOpenStories: () -> Unit,
     onContinueLesson: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -113,6 +116,9 @@ private fun HomeContent(
             Button(onClick = onStartQuiz, modifier = Modifier.weight(1f)) {
                 Text("آزمون")
             }
+        }
+        OutlinedButton(onClick = onOpenStories, modifier = Modifier.fillMaxWidth()) {
+            Text("داستان‌های کوتاه")
         }
 
         when (state) {

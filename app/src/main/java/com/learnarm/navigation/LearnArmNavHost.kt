@@ -20,6 +20,9 @@ import com.learnarm.feature.quiz.navigation.navigateToQuiz
 import com.learnarm.feature.quiz.navigation.quizScreen
 import com.learnarm.feature.reviews.navigation.navigateToReviews
 import com.learnarm.feature.reviews.navigation.reviewsScreen
+import com.learnarm.feature.stories.navigation.navigateToStories
+import com.learnarm.feature.stories.navigation.navigateToStoryReader
+import com.learnarm.feature.stories.navigation.storiesScreen
 
 @Composable
 fun LearnArmNavHost(
@@ -38,12 +41,17 @@ fun LearnArmNavHost(
             onOpenPhrases = { navController.navigateToPhrases() },
             onStartPractice = { navController.navigateToPractice() },
             onOpenReviews = { navController.navigateToReviews() },
+            onOpenStories = { navController.navigateToStories() },
             onContinueLesson = { navController.navigateToLessons() },
         )
         quizScreen(onBack = { navController.popBackStack() })
         phrasesScreen()
         practiceScreen(onBack = { navController.popBackStack() })
         reviewsScreen(onBack = { navController.popBackStack() })
+        storiesScreen(
+            onBack = { navController.popBackStack() },
+            onStorySelected = { navController.navigateToStoryReader() },
+        )
         lessonsScreen(
             sharedViewModel = lessonsSharedViewModel,
             onLessonSelected = { lessonId ->

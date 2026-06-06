@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":feature:practice"))
     implementation(project(":feature:reviews"))
     implementation(project(":feature:lessons"))
+    implementation(project(":feature:stories"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
