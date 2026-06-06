@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -123,6 +124,7 @@ fun LessonRunnerScreen(
                     practicePhase = practicePhase,
                     practiceResult = practiceResult,
                     practiceError = practiceError,
+                    onPlayPhraseAudio = { text -> viewModel.playPhraseAudio(text) },
                     onStartRecording = viewModel::startRecording,
                     onStopAndScore = { viewModel.stopAndScore(stepPhrases[currentStep.itemKey]?.armenian ?: "") },
                     onStepCompleted = {
@@ -157,6 +159,7 @@ private fun LessonRunnerContent(
     practicePhase: PracticePhase,
     practiceResult: ScoreResult.Success?,
     practiceError: ScoreResult.Reason?,
+    onPlayPhraseAudio: (String) -> Unit,
     onStartRecording: () -> Unit,
     onStopAndScore: () -> Unit,
     onStepCompleted: () -> Unit,
@@ -303,15 +306,25 @@ private fun LessonRunnerContent(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
-                            Text(
-                                text = "این عبارت را با صدای بلند تکرار کنید:",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
                             LessonPhraseCard(phrase = stepPhrase)
 
+                            if (practicePhase == PracticePhase.Idle && practiceResult == null) {
+                                OutlinedButton(
+                                    onClick = { onPlayPhraseAudio(stepPhrase.armenian) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("🔊 بشنو")
+                                }
+                                Text(
+                                    text = "اول عبارت رو بشنو، بعد خودت تکرار کن.",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+
                             practiceResult?.let { result ->
-                                PracticeResultCard(result, stepPhrase.armenian)
+                                ScoreGaugeCard(result, stepPhrase.armenian)
                             }
                             practiceError?.let { error ->
                                 Text(
@@ -323,17 +336,19 @@ private fun LessonRunnerContent(
 
                             when (practicePhase) {
                                 PracticePhase.Idle -> {
-                                    if (!hasMicPermission) {
-                                        Button(onClick = onRequestMic,
-                                            modifier = Modifier.fillMaxWidth()) {
-                                            Text("اجازه‌ی دسترسی به میکروفون")
+                                    if (practiceResult == null) {
+                                        if (!hasMicPermission) {
+                                            Button(onClick = onRequestMic,
+                                                modifier = Modifier.fillMaxWidth()) {
+                                                Text("اجازه‌ی دسترسی به میکروفون")
+                                            }
+                                        } else {
+                                            PracticeMicButton(
+                                                label = "🎤 ضبط کن",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                onClick = onStartRecording,
+                                            )
                                         }
-                                    } else {
-                                        PracticeMicButton(
-                                            label = "ضبط",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            onClick = onStartRecording,
-                                        )
                                     }
                                 }
                                 PracticePhase.Recording -> {
@@ -344,7 +359,7 @@ private fun LessonRunnerContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     PracticeMicButton(
-                                        label = "توقف و امتیاز",
+                                        label = "⏹ توقف و امتیاز",
                                         color = Color(0xFFD32F2F),
                                         onClick = onStopAndScore,
                                     )
@@ -592,37 +607,88 @@ private fun PracticeMicButton(
 }
 
 @Composable
-private fun PracticeResultCard(success: ScoreResult.Success, target: String) {
+private fun ScoreGaugeCard(success: ScoreResult.Success, target: String) {
     val percent = (success.score * 100).toInt().coerceIn(0, 100)
-    val color = when {
-        success.score >= 0.8f -> Color(0xFF2E7D32)
-        success.score >= 0.5f -> Color(0xFFEF6C00)
-        else -> Color(0xFFC62828)
+    val scoreColor = when {
+        success.score >= 0.8f -> Color(0xFF2E7D32)  // سبز
+        success.score >= 0.5f -> Color(0xFFEF6C00)  // زرد
+        else -> Color(0xFFC62828)  // قرمز
     }
+    val feedbackLabel = when {
+        success.score >= 0.8f -> "عالی! 👏"
+        success.score >= 0.5f -> "خوب 👍"
+        else -> "دوباره امتحان کن"
+    }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = color, contentColor = Color.White),
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = "امتیاز: %$percent",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "بازخورد: ${success.feedback}",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            if (success.recognized.isNotBlank() && success.recognized != target) {
-                Text(
-                    text = "شنیده شد: ${success.recognized}",
-                    style = MaterialTheme.typography.bodyMedium,
+            // Circular progress gauge
+            Box(
+                modifier = Modifier.size(120.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    progress = { success.score.coerceIn(0f, 1f) },
+                    modifier = Modifier.size(120.dp),
+                    color = scoreColor,
+                    strokeWidth = 8.dp,
                 )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "$percent%",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scoreColor,
+                    )
+                    Text(
+                        text = "تلفظ",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Text(
+                text = feedbackLabel,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = scoreColor,
+            )
+
+            if (success.recognized.isNotBlank() && success.recognized != target) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = scoreColor.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "شنیده شد:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = success.recognized,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = scoreColor,
+                    )
+                }
             }
         }
     }

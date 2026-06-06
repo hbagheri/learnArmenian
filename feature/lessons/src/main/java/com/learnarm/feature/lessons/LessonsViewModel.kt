@@ -2,6 +2,8 @@ package com.learnarm.feature.lessons
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.learnarm.core.audio.AudioRequest
+import com.learnarm.core.audio.LetterAudioPlayer
 import com.learnarm.core.audio.PronunciationScorer
 import com.learnarm.core.audio.ScoreResult
 import com.learnarm.core.audio.SpeechRecorder
@@ -56,6 +58,7 @@ class LessonRunnerViewModel @Inject constructor(
     private val phraseRepository: PhraseRepository,
     private val recorder: SpeechRecorder,
     private val scorer: PronunciationScorer,
+    private val audioPlayer: LetterAudioPlayer,
 ) : ViewModel() {
 
     private val _lessonId = MutableStateFlow(1)
@@ -234,6 +237,16 @@ class LessonRunnerViewModel @Inject constructor(
         _practiceResult.value = null
         _practiceError.value = null
         _practicePhase.value = PracticePhase.Idle
+    }
+
+    fun playPhraseAudio(armenianText: String) {
+        viewModelScope.launch {
+            audioPlayer.play(AudioRequest(
+                key = "phrase_${armenianText.hashCode()}",
+                text = armenianText,
+                voice = "hy-default",
+            ))
+        }
     }
 
     override fun onCleared() {
