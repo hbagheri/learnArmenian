@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -14,10 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,13 +53,14 @@ import com.learnarm.core.database.entity.LetterEntity
 @Composable
 fun LetterLessonScreen(
     onBack: () -> Unit,
-    onStartBatchTest: (batchIndex: Int) -> Unit,
+    onStartBatchTest: (batchIndex: Int, forReplay: Boolean) -> Unit,
     onStartReview: (roundIndex: Int, batchIndex: Int) -> Unit,
     onGoToFinalExam: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LetterLessonViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val chips by viewModel.chips.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -70,6 +75,20 @@ fun LetterLessonScreen(
             },
         )
 
+        if (chips.isNotEmpty()) {
+            BatchChipsRow(
+                chips = chips,
+                onChipTap = { chip ->
+                    when (chip.status) {
+                        BatchChipStatus.Passed -> viewModel.startReplay(chip.index)
+                        BatchChipStatus.Current, BatchChipStatus.Replaying ->
+                            viewModel.exitReplay()
+                        BatchChipStatus.Locked -> Unit
+                    }
+                },
+            )
+        }
+
         when (val s = state) {
             LetterLessonUiState.Loading -> Box(
                 modifier = Modifier.fillMaxSize(),
@@ -80,7 +99,8 @@ fun LetterLessonScreen(
                 state = s,
                 onPlayLetter = viewModel::playLetterAudio,
                 onPlayWord = viewModel::playWordAudio,
-                onStartTest = { onStartBatchTest(s.batchIndex) },
+                onStartTest = { onStartBatchTest(s.batchIndex, s.isReplay) },
+                onExitReplay = viewModel::exitReplay,
             )
 
             is LetterLessonUiState.ReviewPending -> ReviewPendingContent(
@@ -96,19 +116,99 @@ fun LetterLessonScreen(
 }
 
 @Composable
+private fun BatchChipsRow(
+    chips: List<BatchChip>,
+    onChipTap: (BatchChip) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(items = chips, key = { it.index }) { chip ->
+            BatchChipItem(chip = chip, onTap = { onChipTap(chip) })
+        }
+    }
+}
+
+@Composable
+private fun BatchChipItem(chip: BatchChip, onTap: () -> Unit) {
+    val (bg, fg) = when (chip.status) {
+        BatchChipStatus.Passed ->
+            MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        BatchChipStatus.Current ->
+            MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+        BatchChipStatus.Replaying ->
+            MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
+        BatchChipStatus.Locked ->
+            MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val tappable = chip.status != BatchChipStatus.Locked
+    Box(
+        modifier = Modifier
+            .size(width = 56.dp, height = 40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .let { if (tappable) it.clickable(onClick = onTap) else it },
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            when (chip.status) {
+                BatchChipStatus.Passed -> {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = fg,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.size(4.dp))
+                }
+                BatchChipStatus.Locked -> {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = fg,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.size(4.dp))
+                }
+                else -> Unit
+            }
+            Text(
+                text = chip.index.toString(),
+                color = fg,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (chip.status == BatchChipStatus.Current || chip.status == BatchChipStatus.Replaying) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.Medium
+                },
+            )
+        }
+    }
+}
+
+@Composable
 private fun BatchLessonContent(
     state: LetterLessonUiState.BatchLesson,
     onPlayLetter: (LetterEntity) -> Unit,
     onPlayWord: (BatchWordDto) -> Unit,
     onStartTest: () -> Unit,
+    onExitReplay: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item {
-            ProgressHeader(state.batchIndex, state.totalBatches, state.passedCount)
+        if (state.isReplay) {
+            item { ReplayBanner(batchIndex = state.batchIndex, onExitReplay = onExitReplay) }
+        } else {
+            item {
+                ProgressHeader(state.batchIndex, state.totalBatches, state.passedCount)
+            }
         }
         item {
             Text(
@@ -158,13 +258,61 @@ private fun BatchLessonContent(
                 onClick = onStartTest,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = if (state.isReplay) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
                 ),
             ) {
                 Text(
-                    text = "آزمون این بسته (۱۰۰٪ لازمه)",
+                    text = if (state.isReplay) {
+                        "آزمون تمرینی این بسته"
+                    } else {
+                        "آزمون این بسته (۱۰۰٪ لازمه)"
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReplayBanner(batchIndex: Int, onExitReplay: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "حالت مرور — بستهٔ $batchIndex",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Text(
+                    text = "روی پیشرفتت اثر نداره. هر وقت خواستی برگرد به بستهٔ فعلی.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+            Button(
+                onClick = onExitReplay,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                ),
+            ) {
+                Text(
+                    text = "بازگشت",
+                    style = MaterialTheme.typography.labelLarge,
                 )
             }
         }

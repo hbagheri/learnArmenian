@@ -20,7 +20,11 @@ data class LevelDetailRoute(val levelId: Int)
 data object LetterLessonRoute
 
 @Serializable
-data class LetterTypingTestRoute(val batchIndex: Int, val isReview: Boolean)
+data class LetterTypingTestRoute(
+    val batchIndex: Int,
+    val isReview: Boolean,
+    val forReplay: Boolean = false,
+)
 
 @Serializable
 data object VocabReviewRoute
@@ -45,8 +49,12 @@ fun NavGraphBuilder.learningScreen(
     composable<LetterLessonRoute> {
         LetterLessonScreen(
             onBack = { navController.popBackStack() },
-            onStartBatchTest = { batch ->
-                navController.navigateToLetterTypingTest(batchIndex = batch, isReview = false)
+            onStartBatchTest = { batch, forReplay ->
+                navController.navigateToLetterTypingTest(
+                    batchIndex = batch,
+                    isReview = false,
+                    forReplay = forReplay,
+                )
             },
             onStartReview = { _, batch ->
                 navController.navigateToLetterTypingTest(batchIndex = batch, isReview = true)
@@ -82,8 +90,18 @@ fun NavController.navigateToLetterLesson() {
     navigate(LetterLessonRoute)
 }
 
-fun NavController.navigateToLetterTypingTest(batchIndex: Int, isReview: Boolean) {
-    navigate(LetterTypingTestRoute(batchIndex = batchIndex, isReview = isReview))
+fun NavController.navigateToLetterTypingTest(
+    batchIndex: Int,
+    isReview: Boolean,
+    forReplay: Boolean = false,
+) {
+    navigate(
+        LetterTypingTestRoute(
+            batchIndex = batchIndex,
+            isReview = isReview,
+            forReplay = forReplay,
+        ),
+    )
 }
 
 fun NavController.navigateToVocabReview() {

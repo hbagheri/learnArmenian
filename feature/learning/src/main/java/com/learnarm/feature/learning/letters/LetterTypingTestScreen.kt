@@ -61,8 +61,11 @@ fun LetterTypingTestScreen(
         TopAppBar(
             title = {
                 Text(
-                    if (viewModel.isReview) "آزمون دوره‌ای حروف"
-                    else "آزمون بستهٔ ${viewModel.batchIndex}"
+                    when {
+                        viewModel.forReplay -> "مرور بستهٔ ${viewModel.batchIndex}"
+                        viewModel.isReview -> "آزمون دوره‌ای حروف"
+                        else -> "آزمون بستهٔ ${viewModel.batchIndex}"
+                    }
                 )
             },
             navigationIcon = {
@@ -323,11 +326,24 @@ private fun ResultContent(
         Spacer(Modifier.height(16.dp))
         Text(text = if (state.passed) "✅" else "❌", fontSize = 72.sp)
         Text(
-            text = if (state.passed) "قبول شدی" else "این بار نشد",
+            text = when {
+                state.forReplay && state.passed -> "آفرین — هنوز یادته"
+                state.forReplay -> "این بار نشد — یه دور دیگه"
+                state.passed -> "قبول شدی"
+                else -> "این بار نشد"
+            },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
+        if (state.forReplay) {
+            Text(
+                text = "حالت مرور بود — روی پیشرفتت اثری نداره.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(

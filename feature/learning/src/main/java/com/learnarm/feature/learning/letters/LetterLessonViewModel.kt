@@ -18,14 +18,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface LetterLessonUiState {
     data object Loading : LetterLessonUiState
 
-    /** A learning lesson for batch [batchIndex] (currentBatch + 1). */
+    /** A learning lesson for batch [batchIndex] (currentBatch + 1, or any passed batch when [isReplay]). */
     data class BatchLesson(
         val batchIndex: Int,
         val totalBatches: Int,
@@ -33,6 +32,7 @@ sealed interface LetterLessonUiState {
         val batch: LetterBatchDto,
         val batchLetters: List<LetterEntity>,
         val playingKey: String? = null,
+        val isReplay: Boolean = false,
     ) : LetterLessonUiState
 
     /** End-of-round periodic review is pending — user must clear it before next batch. */
@@ -46,6 +46,11 @@ sealed interface LetterLessonUiState {
     data object AllBatchesCompleted : LetterLessonUiState
 }
 
+/** Status of a batch chip in the lesson screen rail. */
+enum class BatchChipStatus { Passed, Current, Locked, Replaying }
+
+data class BatchChip(val index: Int, val status: BatchChipStatus)
+
 @HiltViewModel
 class LetterLessonViewModel @Inject constructor(
     private val curriculumService: CurriculumService,
@@ -57,6 +62,11 @@ class LetterLessonViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<LetterLessonUiState>(LetterLessonUiState.Loading)
     val uiState: StateFlow<LetterLessonUiState> = _uiState.asStateFlow()
 
+    private val _chips = MutableStateFlow<List<BatchChip>>(emptyList())
+    val chips: StateFlow<List<BatchChip>> = _chips.asStateFlow()
+
+    private val _replayBatchIndex = MutableStateFlow<Int?>(null)
+
     private var curriculum: LetterCurriculumDto = FALLBACK_LETTER_CURRICULUM
     private var playJob: Job? = null
 
@@ -67,17 +77,33 @@ class LetterLessonViewModel @Inject constructor(
             } catch (e: Exception) {
                 FALLBACK_LETTER_CURRICULUM
             }
-            // Combine progress + letters so the lesson screen reflects the latest passed-batch
-            // state. (Letters table is seeded once and stable.)
+            // Combine progress + letters + replay selection so the lesson screen reflects
+            // the latest state. (Letters table is seeded once and stable.)
             combine(
                 progressStore.lettersCurrentBatch,
                 progressStore.lettersReviewsPassed,
                 letterRepository.observeLetters(),
-            ) { currentBatch, reviewsPassed, letters ->
-                computeState(currentBatch, reviewsPassed, letters)
+                _replayBatchIndex,
+            ) { currentBatch, reviewsPassed, letters, replayIndex ->
+                val effectiveReplay = replayIndex?.takeIf { it in 1..currentBatch }
+                _chips.value = buildChips(currentBatch, effectiveReplay)
+                computeState(currentBatch, reviewsPassed, letters, effectiveReplay)
             }.collect { state ->
                 _uiState.value = state
             }
+        }
+    }
+
+    private fun buildChips(currentBatch: Int, replayIndex: Int?): List<BatchChip> {
+        val total = curriculum.batches.size
+        return (1..total).map { i ->
+            val status = when {
+                replayIndex == i -> BatchChipStatus.Replaying
+                i <= currentBatch -> BatchChipStatus.Passed
+                i == currentBatch + 1 -> BatchChipStatus.Current
+                else -> BatchChipStatus.Locked
+            }
+            BatchChip(index = i, status = status)
         }
     }
 
@@ -85,8 +111,26 @@ class LetterLessonViewModel @Inject constructor(
         currentBatch: Int,
         reviewsPassed: Int,
         letters: List<LetterEntity>,
+        replayIndex: Int?,
     ): LetterLessonUiState {
         val total = curriculum.batches.size
+
+        // Replay mode overrides everything — show the selected passed batch as a lesson.
+        if (replayIndex != null) {
+            val batch = curriculum.batches.firstOrNull { it.index == replayIndex }
+            if (batch != null) {
+                val byId = letters.associateBy { it.id }
+                return LetterLessonUiState.BatchLesson(
+                    batchIndex = replayIndex,
+                    totalBatches = total,
+                    passedCount = currentBatch,
+                    batch = batch,
+                    batchLetters = batch.letterIds.mapNotNull { byId[it] },
+                    playingKey = currentPlayingKey(),
+                    isReplay = true,
+                )
+            }
+        }
 
         // All batches done — has the user also cleared all required reviews?
         val expectedReviews = curriculum.periodicReviewBatches.count { it <= currentBatch }
@@ -122,6 +166,18 @@ class LetterLessonViewModel @Inject constructor(
             batchLetters = batchLetters,
             playingKey = currentPlayingKey(),
         )
+    }
+
+    fun startReplay(batchIndex: Int) {
+        audioPlayer.stop()
+        playJob?.cancel()
+        _replayBatchIndex.value = batchIndex
+    }
+
+    fun exitReplay() {
+        audioPlayer.stop()
+        playJob?.cancel()
+        _replayBatchIndex.value = null
     }
 
     private fun currentPlayingKey(): String? = (_uiState.value as? LetterLessonUiState.BatchLesson)?.playingKey

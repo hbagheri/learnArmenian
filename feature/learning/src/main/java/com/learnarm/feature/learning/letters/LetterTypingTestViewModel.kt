@@ -46,6 +46,7 @@ sealed interface TypingTestUiState {
         val passThresholdPercent: Int,
         val passed: Boolean,
         val isReview: Boolean,
+        val forReplay: Boolean,
     ) : TypingTestUiState
 }
 
@@ -68,6 +69,7 @@ class LetterTypingTestViewModel @Inject constructor(
     private val route: LetterTypingTestRoute = savedStateHandle.toRoute<LetterTypingTestRoute>()
     val batchIndex: Int = route.batchIndex
     val isReview: Boolean = route.isReview
+    val forReplay: Boolean = route.forReplay
 
     private val _uiState = MutableStateFlow<TypingTestUiState>(TypingTestUiState.Loading)
     val uiState: StateFlow<TypingTestUiState> = _uiState.asStateFlow()
@@ -185,7 +187,7 @@ class LetterTypingTestViewModel @Inject constructor(
         val percent = if (total == 0) 0 else (correct * 100) / total
         val threshold = curriculum.passThresholdPercent
         val passed = percent >= threshold
-        if (passed) {
+        if (passed && !forReplay) {
             viewModelScope.launch {
                 if (isReview) {
                     val roundIndex = if (batchIndex >= 8) 2 else 1
@@ -201,6 +203,7 @@ class LetterTypingTestViewModel @Inject constructor(
             passThresholdPercent = threshold,
             passed = passed,
             isReview = isReview,
+            forReplay = forReplay,
         )
     }
 
