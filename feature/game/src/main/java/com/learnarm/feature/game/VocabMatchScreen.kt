@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.learnarm.feature.game.navigation.GameTypes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +47,17 @@ fun VocabMatchScreen(
     viewModel: GameViewModel = hiltViewModel(),
 ) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
+    val title = when (viewModel.gameType) {
+        GameTypes.VOCABULARY -> "بازی شناسایی واژگان"
+        GameTypes.SENTENCES -> "بازی شناسایی جملات"
+        else -> "بازی شناسایی حروف"
+    }
 
     Column(
         modifier = modifier.fillMaxSize(),
     ) {
         TopAppBar(
-            title = { Text("بازی شناسایی حروف") },
+            title = { Text(title) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -376,17 +382,23 @@ private fun GameOverContent(
         )
 
         val (feedback, requirement) = when {
-            state.gameType == "letters" && state.isUnlocked -> {
+            state.gameType == GameTypes.LETTERS && state.isUnlocked -> {
                 "عالی! تمام حروف را صحیح شناسایی کردی! 🌟" to "✓ حروف آزاد شد!"
             }
-            state.gameType == "letters" && !state.isUnlocked -> {
+            state.gameType == GameTypes.LETTERS -> {
                 "نزدیک بود! اما برای پیش رفتن باید 100% درست شناسایی کنی." to "❌ نیاز: 100%"
             }
-            state.gameType == "vocabulary" && state.isUnlocked -> {
+            state.gameType == GameTypes.VOCABULARY && state.isUnlocked -> {
                 "عالی! واژگان را خوب یاد گرفتی! 🌟" to "✓ واژگان آزاد شد!"
             }
-            else -> {
+            state.gameType == GameTypes.VOCABULARY -> {
                 "خوب تلاش کردی! دوباره سعی کن." to "❌ نیاز: 90%"
+            }
+            state.gameType == GameTypes.SENTENCES && state.isUnlocked -> {
+                "عالی! جملات را خوب یاد گرفتی! 🌟" to "✓ جملات آزاد شد!"
+            }
+            else -> {
+                "خوب تلاش کردی! دوباره سعی کن." to "❌ نیاز: 80%"
             }
         }
 

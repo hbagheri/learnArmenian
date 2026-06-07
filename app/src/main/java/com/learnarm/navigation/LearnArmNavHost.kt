@@ -2,31 +2,23 @@ package com.learnarm.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import com.learnarm.feature.home.navigation.HomeRoute
-import com.learnarm.feature.home.navigation.homeScreen
-import com.learnarm.feature.lessons.LessonsSharedViewModel
-import com.learnarm.feature.lessons.navigation.lessonsScreen
-import com.learnarm.feature.lessons.navigation.lessonRunnerScreen
-import com.learnarm.feature.lessons.navigation.navigateToLessons
-import com.learnarm.feature.lessons.navigation.navigateToLessonRunner
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.learnarm.feature.phrases.navigation.navigateToPhrases
-import com.learnarm.feature.phrases.navigation.phrasesScreen
-import com.learnarm.feature.practice.navigation.navigateToPractice
-import com.learnarm.feature.practice.navigation.practiceScreen
-import com.learnarm.feature.quiz.navigation.navigateToQuiz
-import com.learnarm.feature.quiz.navigation.quizScreen
-import com.learnarm.feature.reviews.navigation.navigateToReviews
-import com.learnarm.feature.reviews.navigation.reviewsScreen
-import com.learnarm.feature.stories.navigation.navigateToStories
-import com.learnarm.feature.stories.navigation.navigateToStoryReader
-import com.learnarm.feature.stories.navigation.storiesScreen
+import com.learnarm.feature.game.navigation.GameTypes
 import com.learnarm.feature.game.navigation.gameScreen
 import com.learnarm.feature.game.navigation.navigateToGame
+import com.learnarm.feature.home.navigation.HomeRoute
+import com.learnarm.feature.home.navigation.homeScreen
 import com.learnarm.feature.learning.navigation.learningScreen
 import com.learnarm.feature.learning.navigation.navigateToLearning
+import com.learnarm.feature.learning.navigation.navigateToLetterLesson
+import com.learnarm.feature.learning.navigation.navigateToVocabReview
+import com.learnarm.feature.lessons.LessonsSharedViewModel
+import com.learnarm.feature.lessons.navigation.lessonRunnerScreen
+import com.learnarm.feature.lessons.navigation.lessonsScreen
+import com.learnarm.feature.lessons.navigation.navigateToLessonRunner
+import com.learnarm.feature.lessons.navigation.navigateToLessons
 
 @Composable
 fun LearnArmNavHost(
@@ -41,33 +33,30 @@ fun LearnArmNavHost(
         modifier = modifier,
     ) {
         homeScreen(
-            onStartQuiz = { navController.navigateToQuiz() },
-            onOpenPhrases = { navController.navigateToPhrases() },
-            onStartPractice = { navController.navigateToPractice() },
-            onOpenReviews = { navController.navigateToReviews() },
-            onOpenStories = { navController.navigateToStories() },
-            onStartLearning = { navController.navigateToLearning() },
-            onContinueLesson = { navController.navigateToLessons() },
+            onStart = { navController.navigateToLearning() },
         )
-        quizScreen(onBack = { navController.popBackStack() })
-        phrasesScreen()
-        practiceScreen(onBack = { navController.popBackStack() })
-        reviewsScreen(onBack = { navController.popBackStack() })
-        storiesScreen(
-            onBack = { navController.popBackStack() },
-            onStorySelected = { navController.navigateToStoryReader() },
-        )
+
         learningScreen(
             navController = navController,
-            onPhaseSelected = { phaseId ->
-                // Phase 1 → Letter Recognition Game (Phase 11)
-                if (phaseId == 1) {
-                    navController.navigateToGame()
+            onReviewLesson = { levelId ->
+                when (levelId) {
+                    1 -> navController.navigateToLetterLesson()
+                    2 -> navController.navigateToVocabReview()
+                    // Levels 3-4: review not yet implemented
                 }
-                // Other phases will be implemented later
+            },
+            onChapterExam = { levelId ->
+                when (levelId) {
+                    1 -> navController.navigateToGame(GameTypes.LETTERS)
+                    2 -> navController.navigateToGame(GameTypes.VOCABULARY)
+                    3 -> navController.navigateToGame(GameTypes.SENTENCES)
+                    // Level 4: media exam not yet implemented
+                }
             },
         )
+
         gameScreen(onBack = { navController.popBackStack() })
+
         lessonsScreen(
             sharedViewModel = lessonsSharedViewModel,
             onLessonSelected = { lessonId ->

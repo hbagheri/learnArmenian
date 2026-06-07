@@ -31,6 +31,38 @@ data class LevelDto(
     val isUnlocked: Boolean,
 )
 
+@Serializable
+data class WordPairDto(
+    val id: Int,
+    val armenian: String,
+    val persian: String,
+    val transliteration: String? = null,
+)
+
+@Serializable
+data class BatchWordDto(
+    val armenian: String,
+    val transliteration: String,
+    val persian: String,
+)
+
+@Serializable
+data class LetterBatchDto(
+    val index: Int,
+    val round: Int,
+    val letterIds: List<Int>,
+    val targetWord: BatchWordDto,
+    val readableWords: List<BatchWordDto>,
+)
+
+@Serializable
+data class LetterCurriculumDto(
+    val batches: List<LetterBatchDto>,
+    val periodicReviewBatches: List<Int>,
+    val passThresholdPercent: Int = 100,
+    val hintTimeoutMs: Long = 8_000L,
+)
+
 @Singleton
 class CurriculumService @Inject constructor() {
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
@@ -119,6 +151,32 @@ class CurriculumService @Inject constructor() {
             }
         } catch (e: Exception) {
             throw e
+        }
+    }
+
+    suspend fun getVocabulary(): List<WordPairDto> = fetchWordPairs("$baseUrl/api/vocabulary")
+
+    suspend fun getSentences(): List<WordPairDto> = fetchWordPairs("$baseUrl/api/sentences")
+
+    suspend fun getLetterCurriculum(): LetterCurriculumDto = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("$baseUrl/api/letter-curriculum").get().build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}")
+            }
+            val body = response.body?.string() ?: throw Exception("empty body")
+            json.decodeFromString<LetterCurriculumDto>(body)
+        }
+    }
+
+    private suspend fun fetchWordPairs(url: String): List<WordPairDto> = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url).get().build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}")
+            }
+            val body = response.body?.string() ?: throw Exception("empty body")
+            json.decodeFromString<List<WordPairDto>>(body)
         }
     }
 }

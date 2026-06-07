@@ -6,8 +6,14 @@ import androidx.navigation.compose.composable
 import com.learnarm.feature.game.VocabMatchScreen
 import kotlinx.serialization.Serializable
 
+object GameTypes {
+    const val LETTERS = "letters"
+    const val VOCABULARY = "vocabulary"
+    const val SENTENCES = "sentences"
+}
+
 @Serializable
-data object GameRoute
+data class GameRoute(val gameType: String = GameTypes.LETTERS)
 
 fun NavGraphBuilder.gameScreen(onBack: () -> Unit) {
     composable<GameRoute> {
@@ -15,6 +21,6 @@ fun NavGraphBuilder.gameScreen(onBack: () -> Unit) {
     }
 }
 
-fun NavController.navigateToGame() {
-    navigate(GameRoute)
+fun NavController.navigateToGame(gameType: String = GameTypes.LETTERS) {
+    navigate(GameRoute(gameType = gameType))
 }

@@ -5,11 +5,17 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.learnarm.core.data.api.CurriculumService
 import com.learnarm.core.data.api.PhaseDto
 import com.learnarm.core.data.api.LevelDto
+import com.learnarm.core.data.progress.ProgressStore
 import javax.inject.Inject
+
+private const val LETTERS_UNLOCK_THRESHOLD = 100
+private const val VOCAB_UNLOCK_THRESHOLD = 90
+private const val SENTENCES_UNLOCK_THRESHOLD = 80
 
 data class Phase(
     val id: Int,
@@ -64,6 +70,7 @@ sealed class LevelDetailUiState {
 @HiltViewModel
 class LevelsViewModel @Inject constructor(
     private val curriculumService: CurriculumService,
+    private val progressStore: ProgressStore,
 ) : ViewModel() {
     private val _levelsState = MutableStateFlow<LevelsUiState>(LevelsUiState.Loading)
     val levelsState: StateFlow<LevelsUiState> = _levelsState
@@ -77,14 +84,28 @@ class LevelsViewModel @Inject constructor(
 
     private fun loadLevels() {
         viewModelScope.launch {
-            try {
-                val levelsDto = curriculumService.getLevels()
-                val levels = levelsDto.map { Level.fromDto(it) }
-                _levelsState.value = LevelsUiState.Ready(levels)
+            val rawLevels = try {
+                curriculumService.getLevels().map { Level.fromDto(it) }
             } catch (e: Exception) {
-                // Fallback to mock data on API error
-                _levelsState.value = LevelsUiState.Ready(getMockLevels())
+                getMockLevels()
             }
+            _levelsState.value = LevelsUiState.Ready(applyUnlockState(rawLevels))
+        }
+    }
+
+    private suspend fun applyUnlockState(levels: List<Level>): List<Level> {
+        val lettersScore = progressStore.lettersScore.first()
+        val vocabScore = progressStore.vocabularyScore.first()
+        val sentencesScore = progressStore.sentencesScore.first()
+        return levels.map { level ->
+            val unlocked = when (level.id) {
+                1 -> true
+                2 -> lettersScore >= LETTERS_UNLOCK_THRESHOLD
+                3 -> vocabScore >= VOCAB_UNLOCK_THRESHOLD
+                4 -> sentencesScore >= SENTENCES_UNLOCK_THRESHOLD
+                else -> false
+            }
+            level.copy(isUnlocked = unlocked)
         }
     }
 
