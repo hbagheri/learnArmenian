@@ -63,6 +63,22 @@ data class LetterCurriculumDto(
     val hintTimeoutMs: Long = 8_000L,
 )
 
+@Serializable
+data class LetterDto(
+    val id: Int,
+    val orderIndex: Int,
+    val upper: String,
+    val lower: String,
+    val name: String,
+    val nameLatin: String,
+    val pronunciationFa: String,
+    val ipa: String,
+    val exampleArmenian: String,
+    val exampleLatin: String,
+    val exampleFa: String,
+    val audioAsset: String? = null,
+)
+
 @Singleton
 class CurriculumService @Inject constructor() {
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
@@ -166,6 +182,17 @@ class CurriculumService @Inject constructor() {
             }
             val body = response.body?.string() ?: throw Exception("empty body")
             json.decodeFromString<LetterCurriculumDto>(body)
+        }
+    }
+
+    suspend fun getLetters(): List<LetterDto> = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("$baseUrl/api/letters").get().build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}")
+            }
+            val body = response.body?.string() ?: throw Exception("empty body")
+            json.decodeFromString<List<LetterDto>>(body)
         }
     }
 

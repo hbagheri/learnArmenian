@@ -89,6 +89,7 @@ fun LetterTypingTestScreen(
                 onInputChanged = viewModel::onInputChanged,
                 onSubmit = viewModel::onSubmit,
                 onReplay = viewModel::onReplayAudio,
+                onSkip = viewModel::skipCurrentQuestion,
             )
 
             is TypingTestUiState.Result -> ResultContent(
@@ -106,6 +107,7 @@ private fun QuestionContent(
     onInputChanged: (String) -> Unit,
     onSubmit: () -> Unit,
     onReplay: () -> Unit,
+    onSkip: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -113,6 +115,9 @@ private fun QuestionContent(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (state.phase == TestPhase.Retry) {
+            RetryPhaseBanner(retryRound = state.retryRound)
+        }
         // Progress
         Column {
             Row(
@@ -120,7 +125,11 @@ private fun QuestionContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "${state.current} از ${state.total}",
+                    text = if (state.phase == TestPhase.Retry) {
+                        "تثبیت • دور ${state.retryRound} • ${state.current} از ${state.total}"
+                    } else {
+                        "${state.current} از ${state.total}"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -212,11 +221,30 @@ private fun QuestionContent(
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         }
+
+        if (state.hintShown && state.ack == null) {
+            Button(
+                onClick = onSkip,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                ),
+            ) {
+                Text(
+                    text = "رد شو (اشتباه حساب می‌شه)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 6.dp),
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun HintCard(letter: LetterEntity) {
+    val lowerKeys = letter.lower.toList()
+    val isDigraph = lowerKeys.size > 1
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -247,12 +275,47 @@ private fun HintCard(letter: LetterEntity) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
+                if (isDigraph) {
+                    val parts = lowerKeys.joinToString(" + ")
+                    Text(
+                        text = "این حرف ۲ کلیده — اول «${lowerKeys[0]}» بعد «${lowerKeys[1]}» (یعنی $parts → ${letter.lower})",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
                 Text(
-                    text = "این سؤال غلط حساب می‌شه. تایپش کن و بریم بعدی.",
+                    text = "امتیاز اولین تلاش رفت. تایپش کن، یا اگه روی کیبردت نیست «رد شو» رو بزن.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RetryPhaseBanner(retryRound: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+        ) {
+            Text(
+                text = "حالت تثبیت — دور $retryRound",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Text(
+                text = "این مرحله امتیاز نداره. تا حروفی که توی پاس اول اشتباه زدی رو درست تایپ نکنی، تست تموم نمی‌شه.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
         }
     }
 }
@@ -268,19 +331,19 @@ private fun AckCard(ack: AnswerAck) {
             containerColor = MaterialTheme.colorScheme.primaryContainer
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             icon = Icons.Default.Check
-            label = "درست"
+            label = "درست — بریم بعدی"
         }
         Mark.Wrong -> {
             containerColor = MaterialTheme.colorScheme.errorContainer
             contentColor = MaterialTheme.colorScheme.onErrorContainer
             icon = Icons.Default.Close
-            label = "اشتباه"
+            label = "اشتباه — دوباره بزن"
         }
         Mark.Timeout -> {
             containerColor = MaterialTheme.colorScheme.tertiaryContainer
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
             icon = Icons.Default.Info
-            label = "زمان تموم شد"
+            label = "زمان تموم شد — درستش رو تایپ کن"
         }
     }
     Card(
@@ -298,6 +361,11 @@ private fun AckCard(ack: AnswerAck) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = contentColor)
                 if (ack.mark != Mark.Correct) {
+                    Text(
+                        text = "تو زدی: «${ack.userInput}»",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor,
+                    )
                     Text(
                         text = "درستش: ${ack.correctLetter.upper} ${ack.correctLetter.lower} (${ack.correctLetter.name})",
                         style = MaterialTheme.typography.bodyMedium,

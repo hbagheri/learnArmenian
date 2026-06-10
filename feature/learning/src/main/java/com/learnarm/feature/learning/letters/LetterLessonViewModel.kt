@@ -9,6 +9,8 @@ import com.learnarm.core.data.api.BatchWordDto
 import com.learnarm.core.data.api.CurriculumService
 import com.learnarm.core.data.api.LetterBatchDto
 import com.learnarm.core.data.api.LetterCurriculumDto
+import com.learnarm.core.data.prefs.PronunciationDisplayMode
+import com.learnarm.core.data.prefs.UiPreferencesStore
 import com.learnarm.core.data.progress.ProgressStore
 import com.learnarm.core.data.repository.LetterRepository
 import com.learnarm.core.database.entity.LetterEntity
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -57,6 +60,7 @@ class LetterLessonViewModel @Inject constructor(
     private val letterRepository: LetterRepository,
     private val progressStore: ProgressStore,
     private val audioPlayer: LetterAudioPlayer,
+    private val uiPrefsStore: UiPreferencesStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LetterLessonUiState>(LetterLessonUiState.Loading)
@@ -64,6 +68,13 @@ class LetterLessonViewModel @Inject constructor(
 
     private val _chips = MutableStateFlow<List<BatchChip>>(emptyList())
     val chips: StateFlow<List<BatchChip>> = _chips.asStateFlow()
+
+    val pronunciationMode: StateFlow<PronunciationDisplayMode> =
+        uiPrefsStore.pronunciationDisplayMode.stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.Eagerly,
+            initialValue = PronunciationDisplayMode.Hidden,
+        )
 
     private val _replayBatchIndex = MutableStateFlow<Int?>(null)
 
@@ -178,6 +189,10 @@ class LetterLessonViewModel @Inject constructor(
         audioPlayer.stop()
         playJob?.cancel()
         _replayBatchIndex.value = null
+    }
+
+    fun cyclePronunciationDisplay() {
+        viewModelScope.launch { uiPrefsStore.cyclePronunciationDisplayMode() }
     }
 
     private fun currentPlayingKey(): String? = (_uiState.value as? LetterLessonUiState.BatchLesson)?.playingKey

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.learnarm.core.data.api.BatchWordDto
+import com.learnarm.core.data.prefs.PronunciationDisplayMode
 import com.learnarm.core.database.entity.LetterEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +62,7 @@ fun LetterLessonScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val chips by viewModel.chips.collectAsStateWithLifecycle()
+    val pronunciationMode by viewModel.pronunciationMode.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -72,6 +74,12 @@ fun LetterLessonScreen(
                         contentDescription = "بازگشت",
                     )
                 }
+            },
+            actions = {
+                PronunciationToggleButton(
+                    mode = pronunciationMode,
+                    onClick = viewModel::cyclePronunciationDisplay,
+                )
             },
         )
 
@@ -97,6 +105,7 @@ fun LetterLessonScreen(
 
             is LetterLessonUiState.BatchLesson -> BatchLessonContent(
                 state = s,
+                pronunciationMode = pronunciationMode,
                 onPlayLetter = viewModel::playLetterAudio,
                 onPlayWord = viewModel::playWordAudio,
                 onStartTest = { onStartBatchTest(s.batchIndex, s.isReplay) },
@@ -191,8 +200,28 @@ private fun BatchChipItem(chip: BatchChip, onTap: () -> Unit) {
 }
 
 @Composable
+private fun PronunciationToggleButton(
+    mode: PronunciationDisplayMode,
+    onClick: () -> Unit,
+) {
+    val label = when (mode) {
+        PronunciationDisplayMode.Hidden -> "—"
+        PronunciationDisplayMode.Phonetic -> "abc"
+        PronunciationDisplayMode.Persian -> "آ"
+    }
+    IconButton(onClick = onClick) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
 private fun BatchLessonContent(
     state: LetterLessonUiState.BatchLesson,
+    pronunciationMode: PronunciationDisplayMode,
     onPlayLetter: (LetterEntity) -> Unit,
     onPlayWord: (BatchWordDto) -> Unit,
     onStartTest: () -> Unit,
@@ -221,6 +250,7 @@ private fun BatchLessonContent(
             BatchLettersRow(
                 letters = state.batchLetters,
                 playingKey = state.playingKey,
+                pronunciationMode = pronunciationMode,
                 onTap = onPlayLetter,
             )
         }
@@ -349,6 +379,7 @@ private fun ProgressHeader(batchIndex: Int, total: Int, passed: Int) {
 private fun BatchLettersRow(
     letters: List<LetterEntity>,
     playingKey: String?,
+    pronunciationMode: PronunciationDisplayMode,
     onTap: (LetterEntity) -> Unit,
 ) {
     Row(
@@ -359,6 +390,7 @@ private fun BatchLettersRow(
             LetterTile(
                 letter = letter,
                 isPlaying = playingKey == "letter-${letter.id}",
+                pronunciationMode = pronunciationMode,
                 onTap = { onTap(letter) },
                 modifier = Modifier.weight(1f),
             )
@@ -366,13 +398,22 @@ private fun BatchLettersRow(
     }
 }
 
+private fun phoneticOf(letter: LetterEntity): String =
+    letter.ipa.trim().trim('/')
+
 @Composable
 private fun LetterTile(
     letter: LetterEntity,
     isPlaying: Boolean,
+    pronunciationMode: PronunciationDisplayMode,
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val pronunciationText: String? = when (pronunciationMode) {
+        PronunciationDisplayMode.Hidden -> null
+        PronunciationDisplayMode.Phonetic -> phoneticOf(letter)
+        PronunciationDisplayMode.Persian -> letter.pronunciationFa
+    }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isPlaying) {
@@ -396,11 +437,13 @@ private fun LetterTile(
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Medium,
                 )
-                Text(
-                    text = letter.pronunciationFa,
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
-                )
+                if (pronunciationText != null) {
+                    Text(
+                        text = pronunciationText,
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             if (isPlaying) {
                 CircularProgressIndicator(

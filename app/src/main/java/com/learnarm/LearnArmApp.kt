@@ -3,6 +3,7 @@ package com.learnarm
 import android.app.Application
 import android.util.Log
 import com.learnarm.core.data.di.ApplicationScope
+import com.learnarm.core.data.repository.LetterRepository
 import com.learnarm.core.data.seed.AlphabetSeeder
 import com.learnarm.core.data.seed.PhrasesSeeder
 import com.learnarm.core.data.sync.LessonsSyncer
@@ -18,6 +19,7 @@ class LearnArmApp : Application() {
     @Inject lateinit var alphabetSeeder: AlphabetSeeder
     @Inject lateinit var phrasesSeeder: PhrasesSeeder
     @Inject lateinit var lessonsSyncer: LessonsSyncer
+    @Inject lateinit var letterRepository: LetterRepository
     @Inject @ApplicationScope lateinit var applicationScope: CoroutineScope
 
     override fun onCreate() {
@@ -25,6 +27,9 @@ class LearnArmApp : Application() {
         applicationScope.launch {
             alphabetSeeder.seedIfNeeded()
             phrasesSeeder.seedIfNeeded()
+            // After seeding (which is offline-bootstrap only), refresh letters from the
+            // backend so pronunciation/IPA/example edits land without an APK release.
+            letterRepository.syncFromBackend()
             val outcome = runCatching { lessonsSyncer.syncIfNeeded() }
                 .getOrElse { error ->
                     Log.w(TAG, "Lesson sync failed", error)
